@@ -86,6 +86,7 @@ resid = resid(final.arima)
 acf(resid)
 acf(resid^2)
 
+Box.test(resid,type="Ljung",fitdf=0,lag=1)
 Box.test(resid^2,type="Ljung",fitdf=0,lag=1)
 
 library(quantmod)
