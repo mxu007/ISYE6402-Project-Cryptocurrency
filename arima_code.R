@@ -6,10 +6,6 @@ library("dplyr")
 
 ######### defining constants for entire analysis ##############
 
-# start date for all analyses
-start_date = as.Date("2017-01-01")
-# train_window experiment start date
-train_start_date = as.Date("2017-11-01")
 
 # working with top n currencies
 n = 5
@@ -90,11 +86,11 @@ aic_optimal_order <- function(time_series) {
 }
 
 
-
-train_test_split <- function(data, train_end_date, forecast_days, currency_index) {
-  index_train = which(data$date == train_end_date)
-  currency_train = data[1:index_train, currency_index]
-  currency_test = data[(index_train + 1) : (index_train + forecast_days), currency_index]
+train_test_split <- function(data, train_start_date, train_end_date, forecast_days, currency_index) {
+  index_train_start = which(data$date == train_start_date)
+  index_train_end = which(data$date == train_end_date)
+  currency_train = data[index_train_start:index_train_end, currency_index]
+  currency_test = data[(index_train_end + 1) : (index_train_end + forecast_days), currency_index]
   currency_train = log(currency_train)
   currency_test = log(currency_test)
   return(list(currency_train, currency_test))
@@ -143,22 +139,31 @@ close_data = get_close_price(all_data, top_currencies)
 close_data$date = as.Date(close_data$date)
 close_data = close_data[order(close_data$date), ]
 
+
+# start date for all analyses, and moving training windows
+start_date = as.Date("2017-06-01")
+train_start_date_windows = seq(start_date, max(close_data$date) - 31, "days")
+train_end_date_windows = train_start_date_windows + 29
+
+
 # filter data from the specified date
 close_data = subset(close_data, date >= start_date)
 rownames(close_data) <- seq(length=nrow(close_data)) 
 
-################################## main code ##################################
+################################## main code for arima experiments ##################################
 train_date_windows = seq(train_start_date, end_date, "weeks")
-forecast_windows = c(1, 3, 5, 7)
+forecast_windows = c(1)
+
 df_perf = data.frame(matrix(nrow = length(train_date_windows)*
                               length(forecast_windows)*(ncol(close_data) - 1), ncol = 11, 0))
-colnames(df_perf) = c("currency", "train_end", "num_forecast_vals", "mspe", "mae", "mape", "pm", 
+colnames(df_perf) = c("currency", "train_start", "num_forecast_vals", "mspe", "mae", "mape", "pm", 
                       "optimal_p", "optimal_q", "optimal_d", "optimal_aic")
 index = 1
-for(i in 1:length(train_date_windows)) {
+for(i in 1:length(train_start_date_windows)) {
   for(j in 1:length(forecast_windows)) {
     for(k in 2:ncol(close_data)) {
-      c(train, test) := train_test_split(close_data, train_date_windows[i], forecast_windows[j], k)
+      c(train, test) := train_test_split(close_data, train_start_date_windows[i], 
+                                         train_end_date_windows[i], forecast_windows[j], k)
       
       optimal_pdq = aic_optimal_order(train)
       model_fin = arima(train, order = c(optimal_pdq[1]$p,optimal_pdq[3]$d,optimal_pdq[2]$q), method='ML')
@@ -166,7 +171,7 @@ for(i in 1:length(train_date_windows)) {
       plot_forecast(train, forecast, test, max, min, npts, ub, lb)
       c(mspe, mae, mape, pm) := perf_measure(forecast, test)
       df_perf[index, 1] = colnames(close_data)[k]
-      df_perf[index, 2] = train_date_windows[i]
+      df_perf[index, 2] = train_start_date_windows[i]
       df_perf[index, 3] = forecast_windows[j]
       df_perf[index, 4:7] = c(mspe, mae, mape, pm)
       df_perf[index, 8:11] = optimal_pdq
@@ -175,3 +180,5 @@ for(i in 1:length(train_date_windows)) {
     }
   }
 }
+
+
