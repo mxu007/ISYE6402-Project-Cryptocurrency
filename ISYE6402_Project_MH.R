@@ -1,10 +1,17 @@
-##ISYE6402 HW3
+##ISYE6402 Project
 library(data.table)
+library(zoo)
 
 # Load data
-data <- read.csv("combined_crypto_daily_data.csv",header=TRUE)
+data <- read.csv("data/combined_crypto_daily_data new.csv",header=TRUE)
 data<- data[nrow(data):1,]
 rownames(data) = 1:nrow(data)
+
+# impute financial data for non-trading days
+data[,2:106] <- sapply(data[,2:106], as.numeric)
+data <- na.locf(data)
+data[,2:106] <- sapply(data[,2:106], as.numeric)
+sapply(data,class)
 
 #data <- data[1:1660,]
 
@@ -14,6 +21,12 @@ ethereum <- data[c(1345:1760),c(1,14:19)]
 ripple <- data[c(1345:1760),c(1,68:73)]
 litecoin <- data[c(1345:1760),c(1,26:31)]
 neo <- data[c(1345:1760),c(1,44:47)]
+vix <- data[c(1345:1760), c(1,86:89)]
+gold <- data[c(1345:1760), c(1,90:93)]
+oil <- data[c(1345:1760), c(1,94:95)]
+dji <- data[c(1345:1760), c(1,96:100)]
+nasdaq <- data[c(1345:1760), c(1,101:105)]
+usepu <- data[c(1345:1760), c(1,106)]
 
 # Subset data based on cryptocurrencies
 #bitcoin <- data[c(1345:1660),c(1:7)]
@@ -23,8 +36,11 @@ neo <- data[c(1345:1760),c(1,44:47)]
 #neo <- data[c(1345:1660),c(1,44:47)]
 
 # ACF
-close <- cbind(bitcoin[,c(1,5)],ethereum[,5],ripple[,5], litecoin[,5], neo[,5]) 
-colnames(close) <- c("data", "bitcoin_close", "ethereum_close", "ripple_close", "litecoin_close", "neo_close")
+close <- cbind(bitcoin[,c(1,5)],ethereum[,5],ripple[,5], litecoin[,5], neo[,5], vix[,5], 
+               gold[,2], oil[,2], dji[,5], nasdaq[,5], usepu[,2]) 
+colnames(close) <- c("data", "bitcoin_close", "ethereum_close", "ripple_close", "litecoin_close", 
+                     "neo_close", "vix_close", "gold", "oil", "dji_close", "nasdaq_close", "usepu")
+sapply(close,class)
 
 close_train = close[1:(nrow(close)-7),]
 close_test = close[(nrow(close)-6):nrow(close),]
@@ -38,23 +54,23 @@ legend("topleft", colnames(close_train_ts), col=1:ncol(close_train), lty=1, cex=
 # ACF of log differenced time series
 acf(close_train_ts)
 
-clsoe_ts_diff_log <- diff(log(close_train_ts))
-plot(clsoe_ts_diff_log, plot.type="single", col = 1:ncol(clsoe_ts_diff_log))
-legend("topleft", colnames(clsoe_ts_diff_log), col=1:ncol(close), lty=1, cex=1)
+close_ts_diff_log <- diff(log(close_train_ts))
+plot(close_ts_diff_log, plot.type="single", col = 1:ncol(close_ts_diff_log))
+legend("topleft", colnames(close_ts_diff_log), col=1:ncol(close), lty=1, cex=0.7)
 
-acf(clsoe_ts_diff_log)
+acf(close_ts_diff_log)
 
 library(vars)
-mul_var_1 <- VAR(clsoe_ts_diff_log, lag.max=20, type="none")
-mul_var_2 <- VAR(clsoe_ts_diff_log, lag.max=20, type="const")
-mul_var_3 <- VAR(clsoe_ts_diff_log, lag.max=20, type="trend")
-mul_var_4 <- VAR(clsoe_ts_diff_log, lag.max=20, type="both")
+mul_var_1 <- VAR(close_ts_diff_log, lag.max=20, type="none")
+mul_var_2 <- VAR(close_ts_diff_log, lag.max=20, type="const")
+mul_var_3 <- VAR(close_ts_diff_log, lag.max=20, type="trend")
+mul_var_4 <- VAR(close_ts_diff_log, lag.max=20, type="both")
 mul_var_1$p
 mul_var_2$p
 mul_var_3$p
 mul_var_4$p
 
-mul_fit <- VAR(clsoe_ts_diff_log, lag.max=10, type="both")
+mul_fit <- VAR(close_ts_diff_log, lag.max=10, type="both")
 arch.test(mul_fit)
 normality.test(mul_fit)
 
