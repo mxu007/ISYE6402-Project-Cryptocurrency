@@ -4,18 +4,12 @@ library("date")
 library("anytime")
 library("dplyr")
 library("zoo")
-
-######### defining constants for entire analysis ##############
+library("sqldf")
 
 
 # working with top n currencies
 n = 5
-# fraction of data for training 
-ftrain = 0.997
-# number of testing points - to determine how many days in advance we have to make predictions
-ndays = 4
-# if forecasting for last 7 days
-take_ndays = 1
+
 
 # function for assignment 
 ':=' <- function(lhs, rhs) {
@@ -195,8 +189,15 @@ for(i in 1:length(train_start_date_windows)) {
 }
 
 
-# simulation game for cyptocurrencies and the profits that we can generate
 
+######## trading game for cyptocurrencies and the profits that we can generate #########
+# assumptions 
+# 1. we can only trade a single unit on a daily basis
+# 2. we can always buy and sell whenever we want: essentially, assumes we have infinite supply of stocks and fund to buy whenever we want 
+# 3. if we buy a single unit one day, we sell it the next day
+# 4. if we sell a unit someday. we effectively realize a "virtual-profit" that equals to drop in price
+
+# function 
 returns_sim = function(data, threshold_risk_adj_return) {
   data$risk_adj_return = 0
   data$buy_sell = 0
@@ -216,11 +217,14 @@ returns_sim = function(data, threshold_risk_adj_return) {
 }
 
 df_perf$train_start = as.Date(df_perf$train_start)
+write.csv(file = "error_analysis_all.csv", df_perf, row.names = F)
+
 
 bitcoin_data = subset(df_perf, currency == "bitcoin")
 ethereum_data = subset(df_perf, currency == "ethereum")
 dji_data = subset(df_perf, currency == "dji")
 
+# can't trade dow-jones virtual stock on weekends
 dji_data$day <- weekdays(dji_data$train_start)
 dji_data = subset(dji_data, day != "Sunday" & day != "Saturday")
 
@@ -266,5 +270,32 @@ c(perf_ethereum, ethereum_profit) := returns_sim(ethereum_data, ethereum_thr)
 c(perf_dji, dji_profit) := returns_sim(dji_data, dji_thr)
 
 write.csv(file = "ethereum_analysis.csv", perf_ethereum, row.names = F)
+write.csv(file = "dji_analysis.csv", perf_ethereum, row.names = F)
+write.csv(file = "bitcoin.csv", perf_ethereum, row.names = F)
 
+# comparing all currencies and net profit between a virtual stock that follows dow-jones index and bitcoin
+combined_table = sqldf("select 
+                       a.train_start as date, 
+                       a.forecast_actual as btc_forecast, 
+                       a.actual_val as btc_val, 
+                       a.volatility as btc_vol, 
+                       a.risk_adj_return as btc_rar, 
+                       a.buy_sell as btc_buy_sell, 
+                       a.profits as btc_profits, 
+                       b.forecast_actual as dji_forecast, 
+                       b.actual_val as dji_val, 
+                       b.volatility as dji_vol, 
+                       b.risk_adj_return as dji_rar, 
+                       b.buy_sell as dji_buy_sell,
+                       b.profits as dji_profits 
+                       from perf_bitcoin as a 
+                       left join perf_dji as b on a.train_start = b.train_start")
+combined_table[is.na(combined_table)] <- 0
+combined_table$date = as.Date(combined_table$date)
 
+# when we are allowed to buy and sell 1 unit of each everyday
+net_profit_combined = subset(combined_table, select = c("date", "btc_profits", "dji_profits"))
+net_profit_combined$total_profit = net_profit_combined$btc_profits + net_profit_combined$dji_profits
+
+matplot(net_profit_combined[, 2:3], type = c("l"), pch = 1, col = 2:3, main = "Profit comparison", ylab = "Profits", xlab = "Time-Index") #plot
+legend("topleft", legend = c("bitcoin", "dji"), col=2:3, pch=1)
