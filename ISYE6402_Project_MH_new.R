@@ -36,10 +36,17 @@ usepu <- data[c(1345:1760), c(1,106)]
 #neo <- data[c(1345:1660),c(1,44:47)]
 
 # ACF
-close <- cbind(bitcoin[,c(1,5)],ethereum[,5],ripple[,5], litecoin[,5], neo[,5], vix[,5], 
-               gold[,2], oil[,2], dji[,5], nasdaq[,5], usepu[,2]) 
-colnames(close) <- c("data", "bitcoin_close", "ethereum_close", "ripple_close", "litecoin_close", 
-                     "neo_close", "vix_close", "gold", "oil", "dji_close", "nasdaq_close", "usepu")
+#close <- cbind(bitcoin[,c(1,5)],ethereum[,5],ripple[,5], litecoin[,5], neo[,5], vix[,5], 
+               #gold[,2], oil[,2], dji[,5], nasdaq[,5], usepu[,2]) 
+#colnames(close) <- c("data", "bitcoin_close", "ethereum_close", "ripple_close", "litecoin_close", 
+                     #"neo_close", "vix_close", "gold", "oil", "dji_close", "nasdaq_close", "usepu")
+
+
+close <- cbind(bitcoin[,c(1,5)], vix[,5], gold[,2], dji[,5], usepu[,2]) 
+colnames(close) <- c("data", "bitcoin_close", "vix_close", "gold", "dji_close", "usepu")
+
+
+
 sapply(close,class)
 
 close_train = close[1:(nrow(close)-7),]
@@ -71,14 +78,16 @@ mul_var_3$p
 mul_var_4$p
 
 mul_fit <- VAR(close_ts_diff_log, lag.max=10, type="both")
+mul_fit$p
+restrict_mul_fit <- restrict(mul_fit)
 arch.test(mul_fit)
 normality.test(mul_fit)
 
-Box.test(resid(mul_fit)[,1], lag =(10+1), type="Ljung-Box", fitdf=10)
-Box.test(resid(mul_fit)[,2], lag =(10+1), type="Ljung-Box", fitdf=10)
-Box.test(resid(mul_fit)[,3], lag =(10+1), type="Ljung-Box", fitdf=10)
-Box.test(resid(mul_fit)[,4], lag =(10+1), type="Ljung-Box", fitdf=10)
-Box.test(resid(mul_fit)[,5], lag =(10+1), type="Ljung-Box", fitdf=10)
+Box.test(resid(mul_fit)[,1], lag =(6+1), type="Ljung-Box", fitdf=6)
+Box.test(resid(mul_fit)[,2], lag =(6+1), type="Ljung-Box", fitdf=6)
+Box.test(resid(mul_fit)[,3], lag =(6+1), type="Ljung-Box", fitdf=6)
+Box.test(resid(mul_fit)[,4], lag =(6+1), type="Ljung-Box", fitdf=6)
+Box.test(resid(mul_fit)[,5], lag =(6+1), type="Ljung-Box", fitdf=6)
 
 
 # Prediction on Bitcoin
