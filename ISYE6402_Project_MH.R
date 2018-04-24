@@ -2,9 +2,10 @@
 library(data.table)
 library(zoo)
 library(vars)
+library(aod)
 
 # Load data
-data <- read.csv("data/combined_crypto_daily_data_new.csv",header=TRUE, stringsAsFactors = FALSE)
+data <- read.csv("data/inputs/combined_crypto_daily_data_new.csv",header=TRUE, stringsAsFactors = FALSE)
 data<- data[nrow(data):1,]
 rownames(data) = 1:nrow(data)
 
@@ -180,6 +181,7 @@ for(i in 1:length(train_start_date_windows)) {
     c(train,test) := train_test_split(close, train_start_date_windows[i], 
                                       train_end_date_windows[i], forecast_windows[j], k)
     mul_fit <- VAR(diff(log(ts(train))), lag.max = 10, type="none")
+    #mul_fit <- restrict(mul_fit)
     optimal_p <- mul_fit$p
     c(forecast, max, min, npts, ub, lb) := forecast_fun_var(train, mul_fit, forecast_windows[j], test)
     c(mspe, mae, mape, pm) := perf_measure(forecast, test)
@@ -259,7 +261,7 @@ write.csv(file = "data/arimax_analysis.csv", df_perf_arimax, row.names = F)
 close_ts <- ts(close[,-1])
 
 # Plot time series
-plot(close_ts, plot.type="single", col = 1:ncol(close_train_ts))
+plot(close_ts, plot.type="single", col = 1:ncol(close_ts))
 legend("topleft", colnames(close_ts), col=1:ncol(close_ts), lty=1, cex=1)
 
 # ACF of log differenced time series
@@ -274,53 +276,24 @@ acf(close_ts_diff_log)
 var_fit <- VAR(close_ts_diff_log, lag.max=20, type="both")
 var_fit$p
 restrict_var_fit <- restrict(var_fit)
-arch.test(mul_fit)
-normality.test(mul_fit)
+sumvar <- summary(var_fit)
+summary(restrict_var_fit)
+arch.test(var_fit)
+normality.test(var_fit)
 
-Box.test(resid(mul_fit)[,1], lag =(6+1), type="Ljung-Box", fitdf=6)
-Box.test(resid(mul_fit)[,2], lag =(6+1), type="Ljung-Box", fitdf=6)
-Box.test(resid(mul_fit)[,3], lag =(6+1), type="Ljung-Box", fitdf=6)
-Box.test(resid(mul_fit)[,4], lag =(6+1), type="Ljung-Box", fitdf=6)
-Box.test(resid(mul_fit)[,5], lag =(6+1), type="Ljung-Box", fitdf=6)
+## Granger Causality: Wald Test
+coef.bitcoin <- coefficients(var_fit)$bitcoin_close
+var.model = vcov(var_fit)[1:400,1:400]
 
+Box.test(resid(var_fit)[,1], lag =(20+1), type="Ljung-Box", fitdf=20)
+Box.test(resid(var_fit)[,2], lag =(20+1), type="Ljung-Box", fitdf=20)
+Box.test(resid(var_fit)[,3], lag =(20+1), type="Ljung-Box", fitdf=20)
+Box.test(resid(var_fit)[,4], lag =(20+1), type="Ljung-Box", fitdf=20)
+Box.test(resid(var_fit)[,5], lag =(20+1), type="Ljung-Box", fitdf=20)
 
-# Prediction on Bitcoin
-mul_pred_diff_log <- predict(mul_fit, n.ahead=7)
-mul_pred_diff_log_1 <- mul_pred_diff_log[[1]]$bitcoin_close[,1]
-mul_ubound_diff_log_1 <- mul_pred_diff_log[[1]]$bitcoin_close[,3]
-mul_lbound_diff_log_1 <- mul_pred_diff_log[[1]]$bitcoin_close[,2]
-
-# inverse of lag log difference
-mul_pred_inv_1 <-  as.numeric(exp(diffinv(mul_pred_diff_log_1, lag=1, xi=log(close_train_ts[,1][409]))))
-mul_pred_inv_1 <- mul_pred_inv_1[2:length((mul_pred_inv_1))]
-
-mul_ubound_inv_1 <-  as.numeric(exp(diffinv(mul_ubound_diff_log_1, lag=1, xi=log(close_train_ts[,1][409]))))
-mul_ubound_inv_1 <- mul_ubound_inv_1[2:length((mul_ubound_inv_1))]
-
-mul_lbound_inv_1 <-  as.numeric(exp(diffinv(mul_lbound_diff_log_1, lag=1, xi=log(close_train_ts[,1][409]))))
-mul_lbound_inv_1 <- mul_lbound_inv_1[2:length((mul_lbound_inv_1))]
-
-mul_MSPE_1 <- mean((close_test[,2]-mul_pred_inv_1)^2)
-
-## MAE (Mean Absolute Prediction Error)
-mul_MAE_1 <- mean(abs(close_test[,2]-mul_pred_inv_1))
-
-## MAPE (Mean Absolute Percentage Prediction Error)
-mul_MAPE_1 <- mean(abs(close_test[,2]-mul_pred_inv_1)/close_test[,2])
-
-## PM
-mul_PM_1 <- sum((close_test[,2]-mul_pred_inv_1)^2)/sum((close_test[,2]-mean(close_test[,2]))^2)
-
-# Plot original + prediction for product 1 using VAR
-par(mfrow=c(1,1))
-
-ymin <- min(close[,2])
-ymax <- max(close[,2])+20
-timevol <- time(close[,1])
-plot(close[,2], type="l", ylim = c(ymin,ymax), xlab="Time", ylab = "Price", main="Bitcoin Price in USD")
-points(timevol[(416-6):416], mul_pred_inv_1, col="red")
-lines(timevol[(416-6):416], mul_ubound_inv_1, lty=3, lwd=2, col="blue")
-lines(timevol[(416-6):416], mul_lbound_inv_1, lty=3, lwd=2, col="green")
-legend("topleft", c("upper bound", "prediction", "lower bound"), col=c("blue","red","green"), lty=c(3,NA,3),pch=c(NA,1,NA), cex=.65)
-
-
+plot(resid(var_fit)[,1])
+points(resid(var_fit)[,2],col="red")
+points(resid(var_fit)[,3],col="green")
+points(resid(var_fit)[,4],col="blue")
+points(resid(var_fit)[,5],col="brown")
+points(resid(var_fit)[,6],col="cyan")

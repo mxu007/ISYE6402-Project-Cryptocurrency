@@ -1,0 +1,14 @@
+
+TY  - RPRT
+A1  - Leopoldo Catania
+A1  - Stefano Grassi
+A1  - Francesco Ravazzolo
+T1  - Predicting the Volatility of Cryptocurrency Time–Series
+T3  - Working Papers
+Y1  - 2018///Feb
+PB  - Centre for Applied Macro- and Petroleum economics (CAMP), BI Norwegian Business School
+IS  - No 3/2018
+DO  - DOI:
+UR  - https://ideas.repec.org/p/bny/wpaper/0061.html
+N2  - Cryptocurrencies have recently gained a lot of interest from investors, central banks and governments worldwide. The lack of any form of political regulation and their market far from being “efficient”, require new forms of regulation in the near future. From an econometric viewpoint, the process underlying the evolution of the cryptocurrencies’ volatility has been found to exhibit at the same time differences and similarities with other financial time–series, e.g. foreign exchanges returns. This short note focuses on predicting the conditional volatility of the four most traded cryptocurrencies: Bitcoin, Ethereum, Litecoin and Ripple. We investigate the effect of accounting for long memory in the volatility process as well as its asymmetric reaction to past values of the series to predict: one day, one and two weeks volatility levels.
+ER  -

@@ -1,0 +1,17 @@
+TY  - JOUR
+TI  - Volatility estimation for Bitcoin: A comparison of GARCH models
+AU  - Katsiampa, Paraskevi
+Y1  - 2017///
+JF  - Economics Letters
+VL  - 158
+IS  - C
+SP  - 3
+EP  - 6
+AB  - We explore the optimal conditional heteroskedasticity model with regards to goodness-of-fit to Bitcoin price data. It is found that the best model is the AR-CGARCH model, highlighting the significance of including both a short-run and a long-run component of the conditional variance.
+KW  - Bitcoin
+KW  -  Cryptocurrency
+KW  -  GARCH
+KW  -  Volatility
+KW  - 
+UR  - https://EconPapers.repec.org/RePEc:eee:ecolet:v:158:y:2017:i:c:p:3-6
+ER  - 
