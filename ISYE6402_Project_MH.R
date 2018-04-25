@@ -97,8 +97,7 @@ aic_optimal_order <- function(time_series) {
 
 # forecast function for var
 forecast_fun_var <- function(data, model, nvals, test) {
-  l = length(data)
-  
+ 
   forecast_values = predict(model, n.ahead=nvals)
   forecast_diff_log = forecast_values[[1]]$bitcoin_close[,1]
   lower_bound_diff_log = forecast_values[[1]]$bitcoin_close[,2]
@@ -118,9 +117,9 @@ forecast_fun_var <- function(data, model, nvals, test) {
 }
 
 # forecast function for arima
-forecast_fun_arima <- function(data, model, nvals, test) {
-  l = length(data)
-  forecast_values = predict(model, n.ahead=nvals, newxreg = test[,6:11])
+forecast_fun_arima <- function(data, model, nvals, test, l) {
+  l=l
+  forecast_values = predict(model, n.ahead=nvals, newxreg = test[,l])
   upper_bound = forecast_values$pred + 1.96*abs(forecast_values$se)
   lower_bound = forecast_values$pred - 1.96*abs(forecast_values$se)
   npts = time(c(data, test))
@@ -169,9 +168,9 @@ sapply(close,class)
 
 ###---- VAR Model ----###
 df_perf = data.frame(matrix(nrow = length(train_start_date_windows)*
-                              length(forecast_windows), ncol = 10, 0))
+                              length(forecast_windows), ncol = 12, 0))
 colnames(df_perf) = c("currency", "train_start", "num_forecast_vals", "mspe", "mae", "mape", "pm", 
-                      "optimal_p", "forecast", "actual")
+                      "optimal_p", "forecast", "actual", "upper_bound","lower_bound")
 
 index = 1
 
@@ -191,7 +190,7 @@ for(i in 1:length(train_start_date_windows)) {
     df_perf[index, 3] = forecast_windows[j]
     df_perf[index, 4:7] = c(mspe, mae, mape, pm)
     df_perf[index, 8] = optimal_p
-    df_perf[index, 9:10] = c(forecast,test)
+    df_perf[index, 9:12] = c(forecast,test,ub,lb)
     
     index = index + 1
     print(c(i, j))
@@ -206,44 +205,49 @@ plot(df_perf[,10], type="l", ylim = c(ymin,ymax), xlab="Time", ylab = "Price", m
 lines(timevol, df_perf[,9], col="red")
 
 # Export result to csv
-write.csv(file = "data/var_analysis.csv", df_perf, row.names = F)
+write.csv(file = "data/outputs/var_analysis.csv", df_perf, row.names = F)
 
 
 ###---- ARIMAX ----###
-df_perf_arimax = data.frame(matrix(nrow = length(train_start_date_windows)*
-                              length(forecast_windows), ncol = 14, 0))
+for (l in 6:11) {
+  df_perf_arimax = data.frame(matrix(nrow = length(train_start_date_windows)*
+                                       length(forecast_windows), ncol = 16, 0))
+  
+  colnames(df_perf_arimax) = c("currency", "train_start", "forecast_actual", "volatility", 
+                               "actual_val", "num_forecast_vals", "mspe", "mae", "mape", "pm", 
+                               "optimal_p", "optimal_q", "optimal_d", "optimal_aic", "up", "lb")
+  
+  index = 1  
 
-colnames(df_perf_arimax) = c("currency", "train_start", "forecast_actual", "volatility", 
-                             "actual_val", "num_forecast_vals", "mspe", "mae", "mape", "pm", 
-                             "optimal_p", "optimal_q", "optimal_d", "optimal_aic")
-
-index = 1
-
-for(i in 1:length(train_start_date_windows)) {
-  for(j in 1:length(forecast_windows)) {
-    k = 2
-    c(train,test) := train_test_split(close, train_start_date_windows[i], 
-                                      train_end_date_windows[i], forecast_windows[j], c(k:12))
-    optimal_pdq = aic_optimal_order(log(train$bitcoin_close))
-    arimax_fit <- arima(log(train$bitcoin_close), order = c(optimal_pdq[1]$p,optimal_pdq[3]$d,optimal_pdq[2]$q), 
-                                    method='ML', xreg = data.frame(log(train[,6:11])))
-
-    c(forecast, max, min, npts, ub, lb) := forecast_fun_arima(log(train), arimax_fit, forecast_windows[j], log(test))
-    
-    c(mspe, mae, mape, pm) := perf_measure(forecast, log(test[,1]))
-    
-    df_perf_arimax[index, 1] = "bitcoin_close"
-    df_perf_arimax[index, 2] = train_end_date_windows[i] + 1
-    df_perf_arimax[index, 3] = exp(forecast[1])
-    df_perf_arimax[index, 4] = (exp(ub) - exp(lb))[1]
-    df_perf_arimax[index, 5] = (test[,1])
-    df_perf_arimax[index, 6] = forecast_windows[j]
-    df_perf_arimax[index, 7:10] = c(mspe, mae, mape, pm)
-    df_perf_arimax[index, 11:14] = optimal_pdq
-    
-    index = index + 1
-    print(c(i, j))
+  for(i in 1:length(train_start_date_windows)) {
+    for(j in 1:length(forecast_windows)) {
+      k = 2
+      c(train,test) := train_test_split(close, train_start_date_windows[i], 
+                                        train_end_date_windows[i], forecast_windows[j], c(k:12))
+      optimal_pdq = aic_optimal_order(log(train$bitcoin_close))
+      arimax_fit <- arima(log(train$bitcoin_close), order = c(optimal_pdq[1]$p,optimal_pdq[3]$d,optimal_pdq[2]$q), 
+                                      method='ML', xreg = data.frame(log(train[,l])))
+  
+      c(forecast, max, min, npts, ub, lb) := forecast_fun_arima(log(train), arimax_fit, forecast_windows[j], log(test),l)
+      
+      c(mspe, mae, mape, pm) := perf_measure(exp(forecast), (test[,1]))
+      
+      df_perf_arimax[index, 1] = "bitcoin_close"
+      df_perf_arimax[index, 2] = train_end_date_windows[i] + 1
+      df_perf_arimax[index, 3] = exp(forecast[1])
+      df_perf_arimax[index, 4] = (exp(ub) - exp(lb))[1]
+      df_perf_arimax[index, 5] = (test[,1])
+      df_perf_arimax[index, 6] = forecast_windows[j]
+      df_perf_arimax[index, 7:10] = c(mspe, mae, mape, pm)
+      df_perf_arimax[index, 11:14] = optimal_pdq
+      df_perf_arimax[index, 15:16] = c(exp(ub),exp(lb))
+  
+      
+      index = index + 1
+      print(c(i, j))
+    }
   }
+  write.csv(df_perf_arimax, paste("data/outputs/arimax_analysis_", l, "_.csv"), row.names = F)
 }
 
 par(mfrow=c(1,1))
@@ -254,7 +258,7 @@ plot(df_perf_arimax[,5], type="l", ylim = c(ymin,ymax), xlab="Time", ylab = "Pri
 lines(timevol, df_perf_arimax[,3], col="red")
 
 # Export result to csv
-write.csv(file = "data/arimax_analysis.csv", df_perf_arimax, row.names = F)
+write.csv(file = "data/outputs/arimax_analysis_new.csv", df_perf_arimax, row.names = F)
 
 
 ###---- VAR on the whole period starting from 06/01/17----###
