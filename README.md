@@ -1,4 +1,4 @@
-# ISYE6402-Project-Cryptocurrency
+# ICryptocurrencies Forecasting
 ISYE6402 Time Series Analysis Project -- Cryptocurrencies: Pricing, Volatility and Trading Strategy Using Time Series Analysis
 
 Team Member : Nirmit Chetwani, Tianyi Liu, Minghan Xu
